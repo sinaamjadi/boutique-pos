@@ -52,7 +52,6 @@ export default {
       return new Response(null, { headers: NO_CACHE_HEADERS });
     }
 
-    // ۱. بررسی نسخه جهت رصد تغییرات با حداقل مصرف ترافیک
     if (url.pathname === '/api/version') {
       let version = '0';
       if (env && env.BOUTIQUE_DB) {
@@ -61,7 +60,6 @@ export default {
       return new Response(JSON.stringify({ version }), { headers: NO_CACHE_HEADERS });
     }
 
-    // ۲. دریافت دیتای فروشگاه بدون کَش
     if (url.pathname === '/api/data') {
       try {
         let data = null;
@@ -77,7 +75,6 @@ export default {
       }
     }
 
-    // ۳. ذخیره داده و تغییر آنی برچسب زمان نسخه
     if (url.pathname === '/api/save' && request.method === 'POST') {
       try {
         const body = await request.json();
@@ -96,11 +93,10 @@ export default {
       }
     }
 
-    // ۴. پاسخ‌دهی به فایل‌های استاتیک برنامه و رفع خطای امنیتی eval
     if (env.ASSETS) {
       const response = await env.ASSETS.fetch(request);
       const newHeaders = new Headers(response.headers);
-      newHeaders.set('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:;");
+      newHeaders.set('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline';");
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
