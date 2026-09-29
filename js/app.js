@@ -305,73 +305,55 @@ class App {
 
 document.addEventListener('DOMContentLoaded', App.init);
 /* ==========================================
-   REAL-TIME BACKGROUND SYNC (SMART POLLING)
+   REAL-TIME BACKGROUND SYNC (VERSION POLLING)
    ========================================== */
 (function initSilentSync() {
   const channel = window.BroadcastChannel ? new BroadcastChannel('pos_tab_sync') : null;
-  let lastDataChecksum = '';
+  let lastVersion = null;
 
-  function refreshAllViews() {
+  async function syncViews() {
     try {
+      if (typeof Database !== 'undefined' && typeof Database.init === 'function') {
+        await Database.init();
+      }
       if (typeof App !== 'undefined') {
         if (typeof App.updateDashboard === 'function') App.updateDashboard();
         if (typeof App.setupNotifications === 'function') App.setupNotifications();
         if (typeof App.renderLogs === 'function') App.renderLogs();
       }
-      if (typeof ProductsManager !== 'undefined' && typeof ProductsManager.renderCards === 'function') {
-        ProductsManager.renderCards();
-      }
-      if (typeof CustomersManager !== 'undefined' && typeof CustomersManager.renderCards === 'function') {
-        CustomersManager.renderCards();
-      }
-      if (typeof StaffManager !== 'undefined' && typeof StaffManager.renderCards === 'function') {
-        StaffManager.renderCards();
-      }
-      if (typeof POS !== 'undefined' && typeof POS.renderHeldCarts === 'function') {
-        POS.renderHeldCarts();
-      }
+      if (typeof ProductsManager !== 'undefined' && typeof ProductsManager.renderCards === 'function') ProductsManager.renderCards();
+      if (typeof CustomersManager !== 'undefined' && typeof CustomersManager.renderCards === 'function') CustomersManager.renderCards();
+      if (typeof StaffManager !== 'undefined' && typeof StaffManager.renderCards === 'function') StaffManager.renderCards();
+      if (typeof POS !== 'undefined' && typeof POS.renderHeldCarts === 'function') POS.renderHeldCarts();
     } catch (e) {
-      console.warn('View update error:', e);
+      console.warn('Sync view error:', e);
     }
   }
 
-  async function checkServerUpdates() {
+  async function checkVersion() {
     try {
-      const response = await fetch('/api/data', { cache: 'no-store' });
-      if (!response.ok) return;
-
-      const text = await response.text();
-      if (!text || text === lastDataChecksum) return;
-
-      if (lastDataChecksum !== '') {
-        try {
-          if (typeof Database !== 'undefined' && typeof Database.init === 'function') {
-            await Database.init();
-          }
-          refreshAllViews();
-          if (channel) channel.postMessage('DATA_UPDATED');
-        } catch (e) {
-          console.warn('Silent sync error:', e);
-        }
+      const res = await fetch('/api/version', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      
+      if (lastVersion && data.version && data.version !== lastVersion) {
+        await syncViews();
+        if (channel) channel.postMessage('DATA_UPDATED');
       }
-      lastDataChecksum = text;
+      lastVersion = data.version;
     } catch (err) {
-      console.warn('Background sync check failed:', err);
+      // نادیده گرفتن خطای شبکه لحظه‌ای
     }
   }
 
   if (channel) {
     channel.onmessage = async (event) => {
       if (event.data === 'DATA_UPDATED') {
-        if (typeof Database !== 'undefined' && typeof Database.init === 'function') {
-          await Database.init();
-        }
-        refreshAllViews();
+        await syncViews();
       }
     };
   }
 
-  // بررسی وضعیت سرور هر ۳ ثانیه
-  setInterval(checkServerUpdates, 3000);
-  setTimeout(checkServerUpdates, 1200);
+  setInterval(checkVersion, 4000);
+  setTimeout(checkVersion, 1000);
 })();
