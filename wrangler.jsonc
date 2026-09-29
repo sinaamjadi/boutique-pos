@@ -1,15 +1,15 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "boutique-pos",
-  "compatibility_date": "2026-09-26",
-  "main": "_worker.js",
+  "compatibility_date": "2026-09-29",
+  "main": "./_worker.js",
   "assets": {
-    "directory": "."
+    "directory": "./",
+    "not_found_handling": "single-page-application"
   },
   "kv_namespaces": [
     {
       "binding": "BOUTIQUE_DB",
-      "id": "boutique_kv_storage"
+      "id": "12763c17ffad43eaa402e25dce9c6ae1"
     }
   ]
 }
