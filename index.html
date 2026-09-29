@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Boutique Cloud OS</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#8b5cf6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="./css/style.css">
+  <style>
+    @font-face {
+      font-family: 'AppCustomFont';
+      src: url('./fonts/custom-font.woff2') format('woff2'),
+           url('./fonts/custom-font.ttf') format('truetype');
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <div class="app-container">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="brand-box" style="border:none; padding:4px 0 10px; flex:1;">
+          <img src="./media/logo.png" class="brand-logo-img" id="header-boutique-logo" alt="Logo" onerror="this.style.display='none'; document.getElementById('header-logo-fallback').style.display='flex';">
+          <div class="brand-logo-fallback" id="header-logo-fallback" style="display:none;">⚡</div>
+          <div class="brand-text">
+            <h2 id="header-store-name">بوتیک کلود OS</h2>
+            <p>سامانه ابری متمرکز فروش</p>
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="close-drawer-btn" style="padding:6px 10px; font-size:0.9rem; display:none;">✕</button>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item"><a href="#" class="nav-link active" data-target="view-dashboard"><span class="icon">🏠</span> داشبورد</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-pos"><span class="icon">🛒</span> فروش / صندوق</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-products"><span class="icon">📦</span> مدیریت محصولات</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-customers"><span class="icon">👥</span> مشتریان و بدهی</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-reports"><span class="icon">📊</span> گزارشات مالی</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-staff"><span class="icon">👨‍💼</span> مدیریت کارکنان</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-logs"><span class="icon">📝</span> لاگ فعالیت‌ها</a></li>
+        <li class="nav-item"><a href="#" class="nav-link" data-target="view-settings"><span class="icon">⚙️</span> تنظیمات بوتیک</a></li>
+      </ul>
+
+      <div style="padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+        <button class="btn btn-secondary btn-full" style="font-size:0.8rem; margin-bottom:8px;" onclick="DataExporter.exportBackupJSON()">💾 دریافت Backup کامل</button>
+        <button class="btn btn-danger btn-full" style="font-size:0.8rem;" onclick="Auth.logout()">🚪 خروج از حساب</button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEW -->
+    <main class="main-content">
+
+      <!-- TOP APP BAR -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button class="hamburger-btn" id="hamburger-btn" aria-label="منو">☰</button>
+          <div class="cloud-status-indicator">
+            <span class="cloud-dot" id="cloud-sync-dot"></span>
+            <span id="cloud-sync-status">در حال اتصال...</span>
+          </div>
+        </div>
+
+        <div class="top-bar-actions">
+          <div class="notif-btn" id="notif-bell-btn">
+            🔔
+            <span class="notif-badge" id="notif-badge-count" style="display:none;">0</span>
+          </div>
+
+          <div class="notif-dropdown" id="notif-dropdown">
+            <div style="font-weight:700; font-size:0.85rem; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:8px;">
+              مرکز هشدارهای هوشمند سیستم
+            </div>
+            <div id="notif-items-list"></div>
+          </div>
+
+          <div class="user-profile-widget">
+            <div class="user-avatar">👤</div>
+            <div>
+              <div style="font-size:0.82rem; font-weight:700;" id="header-user-name">کاربر</div>
+              <span class="badge" id="header-user-badge">...</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 1. DASHBOARD -->
+      <section id="view-dashboard" class="page-view active">
+        <div class="grid-kpi">
+          <div class="kpi-card">
+            <span class="kpi-title">فروش کل</span>
+            <span class="kpi-val" id="dash-today-sales">۰ ت</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">تعداد فاکتورها</span>
+            <span class="kpi-val" id="dash-invoices-count">۰</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">تعداد کل محصولات</span>
+            <span class="kpi-val" id="dash-products-count">۰</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">هشدار کسری انبار</span>
+            <span class="kpi-val" id="dash-low-stock" style="color:var(--danger);">۰</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">کل بدهی مشتریان</span>
+            <span class="kpi-val" id="dash-total-debt" style="color:var(--warning);">۰ ت</span>
+          </div>
+        </div>
+
+        <div class="glass-panel">
+          <h3 style="margin-bottom:14px; font-size:0.98rem; color:#fff;">آخرین فروش‌های ثبت شده</h3>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; font-size:0.85rem; text-align:right;">
+              <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--text-muted);">
+                  <th style="padding:8px;">شماره</th>
+                  <th>تاریخ</th>
+                  <th>مبلغ</th>
+                  <th>پرداخت</th>
+                  <th>فروشنده</th>
+                </tr>
+              </thead>
+              <tbody id="dash-recent-sales"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. POS / CASHIER -->
+      <section id="view-pos" class="page-view">
+        <div class="pos-layout">
+          <div>
+            <div class="glass-panel" style="padding:14px; margin-bottom:14px;">
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="pos-search" placeholder="جستجوی سریع لباس، سایز، رنگ یا بارکد...">
+                <button class="btn btn-cyan" id="btn-scan-barcode">📷 اسکن بارکد</button>
+              </div>
+              <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.75rem; color:var(--text-muted);">سبدهای رزرو سالن:</span>
+                <div id="held-carts-list" style="display:flex; flex-wrap:wrap;"></div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px;" id="pos-products-grid"></div>
+          </div>
+
+          <div class="glass-panel" style="display:flex; flex-direction:column; height:fit-content;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+              <h3 style="font-size:1rem;">سبد خرید صندوق</h3>
+              <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="POS.holdCurrentCart()">⏸️ رزرو سبد (Hold)</button>
+            </div>
+
+            <div id="cart-items-container" style="flex:1; min-height:160px; max-height:260px; overflow-y:auto; margin-bottom:12px;"></div>
+
+            <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:10px; font-size:0.85rem; display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted);">جمع کل:</span>
+                <span id="cart-subtotal">۰ تومان</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:var(--text-muted);">تخفیف:</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span id="cart-discount" style="color:var(--pink);">۰ تومان</span>
+                  <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="POS.applyDiscountModal()">تخفیف</button>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-weight:800; font-size:1.1rem; color:var(--cyan); margin-top:4px;">
+                <span>مبلغ نهایی:</span>
+                <span id="cart-total">۰ تومان</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;">
+              <button class="btn btn-primary" onclick="POS.checkout('کارتخوان')">💳 کارتخوان</button>
+              <button class="btn btn-cyan" onclick="POS.checkout('نقدی')">💵 نقدی</button>
+              <button class="btn btn-secondary" onclick="POS.checkout('انتقال بانکی')">📲 کارت به کارت</button>
+              <button class="btn btn-secondary" onclick="POS.checkout('نسیه')">📋 نسیه</button>
+            </div>
+            <button class="btn btn-danger" style="margin-top:8px; font-size:0.8rem;" onclick="POS.clearCart()">انصراف و خالی کردن سبد</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. PRODUCTS MANAGEMENT -->
+      <section id="view-products" class="page-view">
+        <div class="glass-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 style="font-size:1.05rem; color:#fff;">انبار و مشخصات البسه</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted);">سایزبندی، رنگ‌بندی و هشدار کسری موجودی</p>
+            </div>
+            <button class="btn btn-primary" onclick="ProductsManager.openAddModal()">+ افزودن لباس</button>
+          </div>
+
+          <div class="item-cards-grid" id="products-cards-container"></div>
+        </div>
+      </section>
+
+      <!-- 4. CUSTOMERS & DEBT -->
+      <section id="view-customers" class="page-view">
+        <div class="glass-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 style="font-size:1.05rem; color:#fff;">مشتریان و دفتر نسیه</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted);">پرونده مشتری، ثبت بدهی و تسویه آنی</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary" onclick="CustomersManager.openAddModal()">+ ثبت مشتری</button>
+              <button class="btn btn-cyan" onclick="DataExporter.toCSV('customers.csv', [['نام', 'تلفن', 'بدهی']])">خروجی</button>
+            </div>
+          </div>
+
+          <div class="item-cards-grid" id="customers-cards-container"></div>
+        </div>
+      </section>
+
+      <!-- 5. FINANCIAL REPORTS -->
+      <section id="view-reports" class="page-view">
+        <div class="glass-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 style="font-size:1.05rem; color:#fff;">گزارشات مالی و فروش</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted);">ترازنامه درآمدها و خروجی اکسل فاکتورها</p>
+            </div>
+            <button class="btn btn-primary" onclick="DataExporter.exportSalesCSV()">📊 خروجی Excel</button>
+          </div>
+          <p style="font-size:0.88rem; color:var(--text-muted);">اطلاعات کلیه فاکتورها و فروش‌ها در دیتابیس ابری ثبت و حفظ می‌گردد.</p>
+        </div>
+      </section>
+
+      <!-- 6. STAFF MANAGEMENT -->
+      <section id="view-staff" class="page-view">
+        <div class="glass-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 style="font-size:1.05rem; color:#fff;">مدیریت پرسنل و دسترسی‌ها</h3>
+              <p style="font-size:0.78rem; color:var(--text-muted);">تعریف فروشندگان و فعال‌سازی فوری روی تمام دستگاه‌ها</p>
+            </div>
+            <button class="btn btn-primary" onclick="StaffManager.openAddModal()">+ افزودن کارمند</button>
+          </div>
+
+          <div class="item-cards-grid" id="staff-cards-container"></div>
+        </div>
+      </section>
+
+      <!-- 7. ACTIVITY LOG -->
+      <section id="view-logs" class="page-view">
+        <div class="glass-panel">
+          <h3 style="margin-bottom:12px; font-size:1rem;">تاریخچه رخدادها و لاگ سیستم</h3>
+          <div id="activity-logs-list" style="max-height:60vh; overflow-y:auto;"></div>
+        </div>
+      </section>
+
+      <!-- 8. SETTINGS -->
+      <section id="view-settings" class="page-view">
+        <div class="glass-panel">
+          <h3 style="margin-bottom:16px; font-size:1rem;">تنظیمات هویت بوتیک، ظاهر و فونت</h3>
+          <form id="boutique-settings-form">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div class="form-group"><label>نام بوتیک</label><input type="text" id="set-name" value="بوتیک سایبر استایل" required></div>
+              <div class="form-group"><label>تلفن تماس</label><input type="text" id="set-phone" value="021-88889999"></div>
+              <div class="form-group"><label>شهر</label><input type="text" id="set-city" value="تهران"></div>
+              <div class="form-group"><label>اینستاگرام</label><input type="text" id="set-insta" value="@cyber_boutique"></div>
+              <div class="form-group"><label>تم ظاهری</label>
+                <select id="set-theme">
+                  <option value="dark">Dark Neon (تیره و بنفش)</option>
+                  <option value="light">Light (روشن)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>فونت پیش‌فرض</label>
+                <select id="set-font">
+                  <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                  <option value="IRANSansX">ایران‌سنس (IRANSansX)</option>
+                  <option value="Shabnam">شبنم (Shabnam)</option>
+                  <option value="Yekan">یکان (Yekan)</option>
+                  <option value="AppCustomFont">فونت پوشه /fonts</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;"><label>متن پاورقی فاکتور حرارتی</label><input type="text" id="set-footer" value="اجناس فروخته شده تا ۴۸ ساعت با ارائه فاکتور تعویض می‌گردند."></div>
+            <button type="submit" class="btn btn-primary" style="margin-top:10px;">ذخیره و اعمال در کلود</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-item active" data-target="view-dashboard"><span class="icon">🏠</span>داشبورد</div>
+      <div class="bottom-nav-item" data-target="view-pos"><span class="icon">🛒</span>صندوق</div>
+      <div class="bottom-nav-item" data-target="view-products"><span class="icon">📦</span>محصولات</div>
+      <div class="bottom-nav-item" data-target="view-customers"><span class="icon">👥</span>مشتریان</div>
+      <div class="bottom-nav-item" onclick="document.getElementById('sidebar').classList.add('active'); document.getElementById('sidebar-backdrop').classList.add('active');"><span class="icon">☰</span>منو کامل</div>
+    </nav>
+
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- SMART PWA INSTALL MODAL -->
+  <div class="modal-overlay" id="pwa-install-modal">
+    <div class="modal-box" style="max-width:380px; text-align:center;">
+      <div style="font-size:2.5rem; margin-bottom:10px;">📲</div>
+      <h3 style="margin-bottom:8px; color:#fff;">نصب اپلیکیشن روی دستگاه</h3>
+      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:18px; line-height:1.5;">
+        برای دسترسی سریع‌تر و استفاده تمام‌صفحه بدون نوار مرورگر، نسخه اپلیکیشن را نصب نمایید.
+      </p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-primary btn-full" id="btn-pwa-modal-install">نصب مستقیم اپلیکیشن</button>
+        <button class="btn btn-secondary btn-full" onclick="App.dismissPWAPrompt()">بعداً یادآوری نکن</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-box" style="max-width:380px; text-align:center;">
+      <h2 style="margin-bottom:8px; color:var(--primary);">ورود به سامانه بوتیک</h2>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:20px;">حساب کاربری خود را وارد نمایید</p>
+      <form id="login-form">
+        <div class="form-group" style="text-align:right;">
+          <label>نام کاربری</label>
+          <input type="text" id="login-user" value="superadmin" required>
+        </div>
+        <div class="form-group" style="text-align:right;">
+          <label>رمز عبور</label>
+          <input type="password" id="login-pass" value="admin123" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:10px;">ورود امن</button>
+      </form>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:14px;">
+        اکانت‌های تست: superadmin (admin123) | staff1 (123456)
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD PRODUCT MODAL -->
+  <div class="modal-overlay" id="add-product-modal">
+    <div class="modal-box" style="max-width:480px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+        <h3 style="font-size:1.05rem;">ثبت محصول و سایزبندی جدید</h3>
+        <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="ProductsManager.closeAddModal()">✕</button>
+      </div>
+      <form id="add-product-form">
+        <div class="form-group"><label>نام کالا (مانند: شلوار جین زاپ‌دار)</label><input type="text" id="prd-name" required></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group"><label>کد بارکد / SKU</label><input type="text" id="prd-sku" placeholder="JN-402" required></div>
+          <div class="form-group"><label>دسته‌بندی</label>
+            <select id="prd-cat">
+              <option value="شلوار">شلوار</option>
+              <option value="تی‌شرت">تی‌شرت</option>
+              <option value="پیراهن">پیراهن</option>
+              <option value="لباس زنانه">لباس زنانه</option>
+              <option value="لباس مردانه">لباس مردانه</option>
+              <option value="اکسسوری">اکسسوری</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+          <div class="form-group"><label>برند</label><input type="text" id="prd-brand" value="Zara"></div>
+          <div class="form-group"><label>سایز</label><input type="text" id="prd-size" placeholder="L یا 42" required></div>
+          <div class="form-group"><label>رنگ</label><input type="text" id="prd-color" placeholder="مشکی" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group"><label>قیمت خرید (تومان)</label><input type="number" id="prd-buy" required></div>
+          <div class="form-group"><label>قیمت فروش (تومان)</label><input type="number" id="prd-sell" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group"><label>تعداد موجودی</label><input type="number" id="prd-stock" value="10" required></div>
+          <div class="form-group"><label>حداقل موجودی هشدار</label><input type="number" id="prd-minstock" value="3"></div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+          <button type="button" class="btn btn-secondary" onclick="ProductsManager.closeAddModal()">انصراف</button>
+          <button type="submit" class="btn btn-primary">ثبت در انبار ابری</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADD CUSTOMER MODAL -->
+  <div class="modal-overlay" id="add-customer-modal">
+    <div class="modal-box" style="max-width:440px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+        <h3 style="font-size:1.05rem;">تشکیل پرونده مشتری جدید</h3>
+        <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="CustomersManager.closeAddModal()">✕</button>
+      </div>
+      <form id="add-customer-form">
+        <div class="form-group"><label>نام و نام خانوادگی مشتری</label><input type="text" id="cst-name" required></div>
+        <div class="form-group"><label>شماره تماس</label><input type="text" id="cst-phone" placeholder="0912..." required></div>
+        <div class="form-group"><label>آدرس یا توضیحات سلیقه</label><input type="text" id="cst-address"></div>
+        <div class="form-group"><label>مانده بدهی نسیه اولیه (تومان)</label><input type="number" id="cst-debt" value="0"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+          <button type="button" class="btn btn-secondary" onclick="CustomersManager.closeAddModal()">انصراف</button>
+          <button type="submit" class="btn btn-primary">ذخیره در کلود</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADD STAFF MODAL -->
+  <div class="modal-overlay" id="add-staff-modal">
+    <div class="modal-box" style="max-width:420px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+        <h3 style="font-size:1.05rem;">افزودن کارمند جدید</h3>
+        <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8rem;" onclick="StaffManager.closeAddModal()">✕</button>
+      </div>
+      <form id="add-staff-form">
+        <div class="form-group"><label>نام و نام خانوادگی</label><input type="text" id="staff-name" placeholder="علی احمدی" required></div>
+        <div class="form-group"><label>نام کاربری (جهت لاگین در هر دستگاه)</label><input type="text" id="staff-username" placeholder="ali_staff" required></div>
+        <div class="form-group"><label>رمز عبور</label><input type="password" id="staff-pass" required></div>
+        <div class="form-group"><label>نقش سازمانی</label>
+          <select id="staff-role">
+            <option value="STAFF">صندوقدار / فروشنده سالن</option>
+            <option value="MANAGER">مدیر فروشگاه</option>
+            <option value="SUPER_ADMIN">مدیر ارشد</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+          <button type="button" class="btn btn-secondary" onclick="StaffManager.closeAddModal()">انصراف</button>
+          <button type="submit" class="btn btn-primary">ایجاد در کلود</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- UPGRADED CAMERA SCANNER MODAL WITH LASER & CONFIRMATION -->
+  <div class="modal-overlay" id="scanner-modal">
+    <div class="modal-box" style="text-align:center;">
+      <h3 style="color:#fff;">اسکنر زنده بارکد و QR</h3>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">بارکد روی اتیکت لباس را مقابل کادر نگه دارید</p>
+      
+      <div class="scanner-container">
+        <video id="scanner-video" style="width:100%; height:100%; object-fit:cover;" playsinline></video>
+        <div class="scanner-laser"></div>
+        <div class="scanner-frame-overlay"></div>
+      </div>
+
+      <div style="display:flex; justify-content:center; gap:8px;">
+        <button class="btn btn-cyan" id="manual-barcode-btn">⌨️ ثبت دستی بارکد</button>
+        <button class="btn btn-danger" onclick="BarcodeScanner.stop()">بستن دوربین</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN THERMAL PRINT AREA -->
+  <div id="print-area"></div>
+
+  <!-- SCRIPTS -->
+  <script src="./js/db.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/products.js"></script>
+  <script src="./js/customers.js"></script>
+  <script src="./js/staff.js"></script>
+  <script src="./js/pos.js"></script>
+  <script src="./js/scanner.js"></script>
+  <script src="./js/export.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
