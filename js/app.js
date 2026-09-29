@@ -304,3 +304,51 @@ class App {
 }
 
 document.addEventListener('DOMContentLoaded', App.init);
+/* ==========================================
+   REAL-TIME BACKGROUND SYNC (SMART POLLING)
+   ========================================== */
+(function initSilentSync() {
+  const channel = window.BroadcastChannel ? new BroadcastChannel('pos_tab_sync') : null;
+  let lastDataChecksum = '';
+
+  async function checkServerUpdates() {
+    try {
+      const response = await fetch('/api/data', { cache: 'no-store' });
+      if (!response.ok) return;
+      
+      const text = await response.text();
+      if (!text || text === lastDataChecksum) return;
+
+      // اگر داده‌ها تغییر کرده باشند
+      if (lastDataChecksum !== '') {
+        try {
+          const freshData = JSON.parse(text);
+          // فراخوانی تابع بارگذاری مجدد اطلاعات در صفحه
+          if (typeof loadData === 'function') loadData(freshData);
+          else if (typeof initApp === 'function') initApp(freshData);
+          else if (typeof renderAll === 'function') renderAll();
+          
+          if (channel) channel.postMessage('DATA_UPDATED');
+        } catch (e) {
+          console.warn('Silent sync parse error:', e);
+        }
+      }
+      lastDataChecksum = text;
+    } catch (err) {
+      console.warn('Background sync check failed:', err);
+    }
+  }
+
+  // گوش دادن به تغییرات سایر تب‌های باز در همین مرورگر
+  if (channel) {
+    channel.onmessage = (event) => {
+      if (event.data === 'DATA_UPDATED') {
+        checkServerUpdates();
+      }
+    };
+  }
+
+  // بررسی وضعیت سرور هر ۴ ثانیه یک بار بدون مزاحمت برای کاربر
+  setInterval(checkServerUpdates, 4000);
+  setTimeout(checkServerUpdates, 1000);
+})();
