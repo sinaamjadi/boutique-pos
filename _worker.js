@@ -34,54 +34,80 @@ const DEFAULT_STORE = {
   categories: ['لباس زنانه', 'لباس مردانه', 'شلوار', 'تی‌شرت', 'پیراهن', 'کفش', 'کیف', 'اکسسوری']
 };
 
-let memCache = null;
+const NO_CACHE_HEADERS = {
+  'Content-Type': 'application/json; charset=utf-8',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': '*',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0'
+};
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: NO_CACHE_HEADERS });
+    }
+
+    // ۱. بررسی نسخه جهت رصد تغییرات با حداقل مصرف ترافیک
+    if (url.pathname === '/api/version') {
+      let version = '0';
+      if (env && env.BOUTIQUE_DB) {
+        version = (await env.BOUTIQUE_DB.get('app_version', { cacheTtl: 60 })) || '0';
+      }
+      return new Response(JSON.stringify({ version }), { headers: NO_CACHE_HEADERS });
+    }
+
+    // ۲. دریافت دیتای فروشگاه بدون کَش
     if (url.pathname === '/api/data') {
       try {
         let data = null;
         if (env && env.BOUTIQUE_DB) {
-          const raw = await env.BOUTIQUE_DB.get('global_boutique_data');
+          const raw = await env.BOUTIQUE_DB.get('global_boutique_data', { type: 'text', cacheTtl: 60 });
           if (raw) data = JSON.parse(raw);
         }
-        if (!data) {
-          data = memCache || DEFAULT_STORE;
-        }
-        return new Response(JSON.stringify(data), {
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-store'
-          }
-        });
+        if (!data) data = DEFAULT_STORE;
+
+        return new Response(JSON.stringify(data), { headers: NO_CACHE_HEADERS });
       } catch (err) {
-        return new Response(JSON.stringify(memCache || DEFAULT_STORE), {
-          headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
-        });
+        return new Response(JSON.stringify(DEFAULT_STORE), { headers: NO_CACHE_HEADERS });
       }
     }
 
+    // ۳. ذخیره داده و تغییر آنی برچسب زمان نسخه
     if (url.pathname === '/api/save' && request.method === 'POST') {
       try {
         const body = await request.json();
-        memCache = body;
+        const newVersion = Date.now().toString();
+
         if (env && env.BOUTIQUE_DB) {
-          await env.BOUTIQUE_DB.put('global_boutique_data', JSON.stringify(body));
+          await Promise.all([
+            env.BOUTIQUE_DB.put('global_boutique_data', JSON.stringify(body)),
+            env.BOUTIQUE_DB.put('app_version', newVersion)
+          ]);
         }
-        return new Response(JSON.stringify({ success: true, timestamp: Date.now() }), {
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-        });
+
+        return new Response(JSON.stringify({ success: true, version: newVersion }), { headers: NO_CACHE_HEADERS });
       } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: NO_CACHE_HEADERS });
       }
     }
 
+    // ۴. پاسخ‌دهی به فایل‌های استاتیک برنامه و رفع خطای امنیتی eval
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const response = await env.ASSETS.fetch(request);
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:;");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
     }
+
     return new Response('Not found', { status: 404 });
   }
 };
