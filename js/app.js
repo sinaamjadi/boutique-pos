@@ -311,26 +311,47 @@ document.addEventListener('DOMContentLoaded', App.init);
   const channel = window.BroadcastChannel ? new BroadcastChannel('pos_tab_sync') : null;
   let lastDataChecksum = '';
 
+  function refreshAllViews() {
+    try {
+      if (typeof App !== 'undefined') {
+        if (typeof App.updateDashboard === 'function') App.updateDashboard();
+        if (typeof App.setupNotifications === 'function') App.setupNotifications();
+        if (typeof App.renderLogs === 'function') App.renderLogs();
+      }
+      if (typeof ProductsManager !== 'undefined' && typeof ProductsManager.renderCards === 'function') {
+        ProductsManager.renderCards();
+      }
+      if (typeof CustomersManager !== 'undefined' && typeof CustomersManager.renderCards === 'function') {
+        CustomersManager.renderCards();
+      }
+      if (typeof StaffManager !== 'undefined' && typeof StaffManager.renderCards === 'function') {
+        StaffManager.renderCards();
+      }
+      if (typeof POS !== 'undefined' && typeof POS.renderHeldCarts === 'function') {
+        POS.renderHeldCarts();
+      }
+    } catch (e) {
+      console.warn('View update error:', e);
+    }
+  }
+
   async function checkServerUpdates() {
     try {
       const response = await fetch('/api/data', { cache: 'no-store' });
       if (!response.ok) return;
-      
+
       const text = await response.text();
       if (!text || text === lastDataChecksum) return;
 
-      // اگر داده‌ها تغییر کرده باشند
       if (lastDataChecksum !== '') {
         try {
-          const freshData = JSON.parse(text);
-          // فراخوانی تابع بارگذاری مجدد اطلاعات در صفحه
-          if (typeof loadData === 'function') loadData(freshData);
-          else if (typeof initApp === 'function') initApp(freshData);
-          else if (typeof renderAll === 'function') renderAll();
-          
+          if (typeof Database !== 'undefined' && typeof Database.init === 'function') {
+            await Database.init();
+          }
+          refreshAllViews();
           if (channel) channel.postMessage('DATA_UPDATED');
         } catch (e) {
-          console.warn('Silent sync parse error:', e);
+          console.warn('Silent sync error:', e);
         }
       }
       lastDataChecksum = text;
@@ -339,16 +360,18 @@ document.addEventListener('DOMContentLoaded', App.init);
     }
   }
 
-  // گوش دادن به تغییرات سایر تب‌های باز در همین مرورگر
   if (channel) {
-    channel.onmessage = (event) => {
+    channel.onmessage = async (event) => {
       if (event.data === 'DATA_UPDATED') {
-        checkServerUpdates();
+        if (typeof Database !== 'undefined' && typeof Database.init === 'function') {
+          await Database.init();
+        }
+        refreshAllViews();
       }
     };
   }
 
-  // بررسی وضعیت سرور هر ۴ ثانیه یک بار بدون مزاحمت برای کاربر
-  setInterval(checkServerUpdates, 4000);
-  setTimeout(checkServerUpdates, 1000);
+  // بررسی وضعیت سرور هر ۳ ثانیه
+  setInterval(checkServerUpdates, 3000);
+  setTimeout(checkServerUpdates, 1200);
 })();
